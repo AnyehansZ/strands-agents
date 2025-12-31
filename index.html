@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Strands Agent UI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #chat_history {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+            background-color: #fff;
+        }
+        .message-container {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-end;
+        }
+        .user-msg .message-bubble {
+            background-color: #e0f7fa;
+            align-self: flex-end;
+            margin-left: auto;
+            border-radius: 15px 15px 0 15px;
+        }
+        .agent-msg .message-bubble {
+            background-color: #fffde7;
+            align-self: flex-start;
+            margin-right: auto;
+            border-radius: 15px 15px 15px 0;
+        }
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        form {
+            display: flex;
+            padding: 20px;
+            background-color: #eee;
+            border-top: 1px solid #ddd;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat_history"></div>
+
+    <form id="chat-form">
+        <input type="text" id="user-input" placeholder="Type your message...">
+        <button type="submit">Send</button>
+    </form>
+
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatHistory = document.getElementById('chat_history');
+        let isRequestInProgress = false;  // Prevent multiple concurrent requests
+        let requestCount = 0;  // Track total requests for debugging
+
+        function appendMessage(sender, message) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-container', `${sender}-msg`);
+
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            messageBubble.innerText = message;
+
+            messageContainer.appendChild(messageBubble);
+            chatHistory.appendChild(messageContainer);
+
+            // Auto-scroll to the bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+
+            // Prevent multiple concurrent requests
+            if (isRequestInProgress) {
+                console.warn('Request already in progress. Ignoring duplicate submission.');
+                return;
+            }
+
+            const userQuery = userInput.value.trim();
+            if (userQuery === '') return;
+
+            requestCount++;
+            console.log(`[Request #${requestCount}] User query: ${userQuery}`);
+            appendMessage('user', userQuery);
+            userInput.value = '';
+
+            isRequestInProgress = true;
+            console.log(`[Request #${requestCount}] Sending to agent...`);
+            fetch('/cgi-bin/agent_script.py', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'query=' + encodeURIComponent(userQuery)
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.text();
+            })
+            .then(data => {
+                console.log(`[Request #${requestCount}] Response:`, data);
+                appendMessage('agent', data);
+            })
+            .catch(error => {
+                console.error(`[Request #${requestCount}] Error:`, error);
+                appendMessage('agent', 'Error: Could not get response from agent.');
+            })
+            .finally(() => {
+                isRequestInProgress = false;
+                console.log(`[Request #${requestCount}] Done.`);
+            });
+        });
+    </script>
+</body>
+</html>
