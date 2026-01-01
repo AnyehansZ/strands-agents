@@ -175,7 +175,7 @@ If you prefer to use environment variables instead of hardcoding the API key, fo
 Replace the hardcoded API key line:
 ```python
 # BEFORE
-api_key = "AIzaSyBMmDNpXb46IRAVHoRtDie_qenBgx3UST4"
+api_key = "your api key here"
 ```
 
 With this code that reads from environment variables:
